@@ -24,3 +24,22 @@ The data platform follows a structured Medallion Lakehouse architecture on Datab
 * **Languages & Libraries:** Python, PySpark, SQL, Spatial SQL, Pandas, GeoPandas, Scikit-Learn, Statsmodels
 * **GIS & 3D Modeling:** QGIS, PostGIS, CesiumJS
 * **Business Intelligence:** Power BI (DAX, Power Query)
+
+# Methodology
+
+## 1. Spatial Data Engineering & CRS Standardization
+Urban datasets originate in heterogeneous formats and coordinate systems. Geographic coordinates (`EPSG:4326`) are systematically reprojected into the French planar metric projection (`EPSG:2154` / RGF93 - Lambert-93). This guarantees metric precision when computing polygon areas (`ST_Area`), infrastructure catchment buffers (`ST_Buffer`), and proximity thresholds (`ST_DWithin`) between roadworks and transit corridors.
+
+## 2. Medallion Lakehouse Governance
+Data progresses through strict quality gates. The Bronze layer preserves raw state history in Delta format. The Silver layer applies deduplication, handles missing sensor telemetry, and performs spatial joins. The Gold layer structures data into an analytical star schema optimized for fast BI querying and ML feature consumption.
+
+## 3. Time-Series & Spatial Machine Learning
+Forecasting urban mobility requires capturing both temporal seasonality and spatial disruptions. The modeling approach combines statistical baseline models (Holt-Winters Exponential Smoothing) to capture weekly and seasonal commuting cycles with tree-based ensemble regressors (`RandomForestRegressor`) trained on engineered lag features, calendar events, and active construction zone indicators.
+
+# Workflow
+
+1. **Data Extraction & Bronze Ingestion:** Ingest Open Data Paris datasets (traffic counts, Velib stations, construction perimeters) into Databricks DBFS and register raw Bronze Delta tables.
+2. **Silver Cleaning & Spatial ETL:** Filter invalid sensor logs, standardize timestamps, transform geometries from `EPSG:4326` to `EPSG:2154`, and run Spatial SQL queries to quantify the impact of road disruptions within a defined meter radius of major corridors.
+3. **Gold Dimensional Aggregation:** Aggregate hourly and daily mobility metrics by corridor and district, building curated Gold tables for analytics and machine learning.
+4. **Model Training & Forecasting:** Execute feature engineering on Gold time-series data, train the Holt-Winters and Random Forest models, validate performance metrics (MAE, RMSE), and generate daily traffic projections.
+5. **BI & Digital Twin Deployment:** Connect Power BI to Gold tables to track urban mobility KPIs, and export spatial layers to QGIS and CesiumJS for 3D digital twin visualization.
